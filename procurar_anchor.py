@@ -24,7 +24,11 @@ CLICK_INTERVAL = 0.30   # tempo entre cliques no double
 HOLD_SECONDS = 0.12     # tempo segurando no modo hold
 
 # ===== CONFIG DE TEMPO =====
-POST_CLICK_SLEEP = 1  # tempo de espera antes da confirmação
+POST_CLICK_SLEEP = 1.0  # espera base após clicar (antes de começar a confirmar)
+
+# ✅ MINI WAIT INCREMENTAL (novo)
+CONFIRM_TRIES = 4       # quantas checagens de confirmação por tentativa
+CONFIRM_SLEEP = 0.25    # tempo entre checagens (segundos)
 
 # ===== PONTO NEUTRO (RESET DE FOCO) =====
 NEUTRAL_OFFSET_X = 60
@@ -90,6 +94,36 @@ def check_anchor_once(anchor_path, threshold=THRESHOLD):
     _, max_val, _, _ = cv2.minMaxLoc(result)
 
     return max_val >= threshold, max_val
+
+
+def confirm_with_mini_wait(anchor_path):
+    """
+    Faz a confirmação em múltiplas checagens curtas (mini wait incremental).
+    Retorna (confirmed: bool, best_confidence: float)
+    """
+    # espera base (pode ser 0.0 se você quiser começar a checar imediatamente)
+    if POST_CLICK_SLEEP > 0:
+        print(f"Aguardando {POST_CLICK_SLEEP:.2f}s antes de iniciar confirmação...")
+        time.sleep(POST_CLICK_SLEEP)
+
+    best_conf = 0.0
+
+    for i in range(1, CONFIRM_TRIES + 1):
+        confirmed, conf = check_anchor_once(anchor_path)
+        if conf > best_conf:
+            best_conf = conf
+
+        if confirmed:
+            print(f"✅ Confirmação OK na checagem {i}/{CONFIRM_TRIES} (confiança={conf:.3f})")
+            return True, conf
+
+        if i < CONFIRM_TRIES:
+            print(f"⏳ Ainda não... checagem {i}/{CONFIRM_TRIES} (confiança={conf:.3f}). "
+                  f"Esperando {CONFIRM_SLEEP:.2f}s")
+            time.sleep(CONFIRM_SLEEP)
+
+    print(f"❌ Não confirmou após {CONFIRM_TRIES} checagens. melhor_confiança={best_conf:.3f}")
+    return False, best_conf
 
 
 def move_to_neutral_point():
@@ -195,18 +229,14 @@ for attempt in range(1, RETRY_COUNT + 1):
     if not click_at(click_x, click_y):
         break
 
-    # Espera antes de confirmar
-    print(f"Aguardando {POST_CLICK_SLEEP:.2f}s antes da confirmação...")
-    time.sleep(POST_CLICK_SLEEP)
-
-    # Confirma inventário aberto
-    confirmed, confidence = check_anchor_once(ANCHOR_INVENTARIO_ABERTO)
+    # ✅ Confirmação com mini wait incremental
+    confirmed, best_confidence = confirm_with_mini_wait(ANCHOR_INVENTARIO_ABERTO)
 
     if confirmed:
-        print(f"✅ Inventário ABERTO confirmado (confiança={confidence:.3f})")
+        print(f"✅ Inventário ABERTO confirmado (confiança={best_confidence:.3f})")
         break
 
-    print(f"⚠️ Tentativa {attempt} falhou (confiança={confidence:.3f})")
+    print(f"⚠️ Tentativa {attempt} falhou (melhor_confiança={best_confidence:.3f})")
 
 else:
     print("❌ Falha: inventário não abriu após todas as tentativas.")
