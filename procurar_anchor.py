@@ -99,12 +99,15 @@ CLICK_MODE = "hold"     # "single", "double", "hold"
 CLICK_INTERVAL = 0.30   # tempo entre cliques no double
 HOLD_SECONDS = 0.12     # tempo segurando no modo hold
 
-# Move primeiro (pra garantir foco e posição)
+# ===== CONFIG DE TEMPO =====
+POST_CLICK_SLEEP = 0.5  # tempo de espera antes da próxima ação
+
+# Move primeiro (garante foco e posição)
 pyautogui.moveTo(click_x, click_y, duration=0.15)
 time.sleep(0.10)
 
 if CLICK_MODE == "single":
-    pyautogui.click()  # já está no ponto
+    pyautogui.click()
     print("Clique (single) executado.")
 
 elif CLICK_MODE == "double":
@@ -121,3 +124,7 @@ elif CLICK_MODE == "hold":
 
 else:
     print(f"CLICK_MODE inválido: {CLICK_MODE}")
+
+# ⬇️ ESPERA PARAMETRIZADA
+print(f"Aguardando {POST_CLICK_SLEEP:.2f}s antes da próxima ação...")
+time.sleep(POST_CLICK_SLEEP)
