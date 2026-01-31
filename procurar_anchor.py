@@ -88,6 +88,33 @@ def move_to_neutral_point():
     pyautogui.moveTo(nx, ny, duration=0.12)
     time.sleep(NEUTRAL_SLEEP)
 
+def click_at(x: int, y: int) -> bool:
+    """Move para (x,y) e clica conforme CLICK_MODE. Retorna False se modo inválido."""
+    pyautogui.moveTo(x, y, duration=0.15)
+    time.sleep(0.10)
+
+    if CLICK_MODE == "single":
+        pyautogui.click()
+        print("Clique (single) executado.")
+        return True
+
+    if CLICK_MODE == "double":
+        pyautogui.click()
+        time.sleep(CLICK_INTERVAL)
+        pyautogui.click()
+        print("Clique (double) executado.")
+        return True
+
+    if CLICK_MODE == "hold":
+        pyautogui.mouseDown()
+        time.sleep(HOLD_SECONDS)
+        pyautogui.mouseUp()
+        print("Clique (hold) executado.")
+        return True
+
+    print(f"CLICK_MODE inválido: {CLICK_MODE}")
+    return False
+
 target = find_first_window()
 if not target:
     print(f"FALHA: não achei janela contendo '{TITLE_CONTAINS}' (ou está minimizada).")
@@ -211,48 +238,30 @@ else:
     if confirmed2:
         print(f"✅ Inventário ABERTO confirmado no retry (confiança={confidence2:.3f})")
     else:
+        # ===== TENTAR ABRIR INVENTÁRIO COM RETRY =====
         for attempt in range(1, RETRY_COUNT + 1):
-                if attempt == 1:
-                    print("▶ Tentativa inicial")
-                else:
-                    print(f"↻ Retry {attempt-1}/{RETRY_COUNT-1}: resetando foco e tentando novamente...")
-                    move_to_neutral_point()
+            print(f"▶ Tentativa {attempt}/{RETRY_COUNT} de abrir inventário")
 
-                # 1) volta pro ponto do clique
-                pyautogui.moveTo(click_x, click_y, duration=0.15)
-                time.sleep(0.10)
+            # Entre tentativas, reseta foco (na primeira tentativa não precisa)
+            if attempt > 1:
+                print("↪ Resetando foco antes da próxima tentativa...")
+                move_to_neutral_point()
 
-                # 2) clica no mesmo modo configurado
-                if CLICK_MODE == "single":
-                    pyautogui.click()
-                    print("Clique (single) executado.")
+            # 1) clique no ponto calculado
+            if not click_at(click_x, click_y):
+                break
 
-                elif CLICK_MODE == "double":
-                    pyautogui.click()
-                    time.sleep(CLICK_INTERVAL)
-                    pyautogui.click()
-                    print("Clique (double) executado.")
+            # 2) espera e confirma
+            print(f"Aguardando {POST_CLICK_SLEEP:.2f}s antes da confirmação...")
+            time.sleep(POST_CLICK_SLEEP)
 
-                elif CLICK_MODE == "hold":
-                    pyautogui.mouseDown()
-                    time.sleep(HOLD_SECONDS)
-                    pyautogui.mouseUp()
-                    print("Clique (hold) executado.")
+            confirmed, confidence = check_anchor_once(ANCHOR_INVENTARIO_ABERTO)
 
-                else:
-                    print(f"CLICK_MODE inválido: {CLICK_MODE}")
-                    break
+            if confirmed:
+                print(f"✅ Inventário ABERTO confirmado (confiança={confidence:.3f})")
+                break
 
-                # 3) espera e confirma
-                print(f"Aguardando {POST_CLICK_SLEEP:.2f}s antes da confirmação...")
-                time.sleep(POST_CLICK_SLEEP)
+            print(f"⚠️ Tentativa {attempt} falhou (confiança={confidence:.3f})")
 
-                confirmed, confidence = check_anchor_once(ANCHOR_INVENTARIO_ABERTO)
-
-                if confirmed:
-                    print(f"✅ Inventário ABERTO confirmado (confiança={confidence:.3f})")
-                    break
-
-                print(f"❌ Não confirmado (confiança={confidence:.3f})")
         else:
             print("❌ Falha: inventário não abriu após todas as tentativas.")
