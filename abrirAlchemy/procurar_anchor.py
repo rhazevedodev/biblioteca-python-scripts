@@ -6,8 +6,8 @@ import pygetwindow as gw
 import pyautogui
 
 TITLE_CONTAINS = "WLO"
-ANCHOR_INVENTARIO = "anchors/inventario.png"
-ANCHOR_INVENTARIO_ABERTO = "anchors/inventario_aberto.png"
+ANCHOR_INVENTARIO = "anchors/alchemy.png"
+ANCHOR_INVENTARIO_ABERTO = "anchors/alchemy_aberto.png"
 
 THRESHOLD = 0.80
 
